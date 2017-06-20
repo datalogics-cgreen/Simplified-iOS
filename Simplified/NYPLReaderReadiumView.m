@@ -13,7 +13,6 @@
 #import "NYPLReaderTOCElement.h"
 #import "NYPLReadium.h"
 #import "UIColor+NYPLColorAdditions.h"
-#import "NYPLLog.h"
 #import "NYPLReaderReadiumView.h"
 #import "UIColor+NYPLColorAdditions.h"
 #import "NSURL+NYPLURLAdditions.h"
@@ -23,7 +22,7 @@
 #import "SimplyE-Swift.h"
 
 @interface NYPLReaderReadiumView ()
-  <NYPLReaderRenderer, RDPackageResourceServerDelegate, WKNavigationDelegate>
+  <NYPLReaderRenderer, RDPackageResourceServerDelegate, WKNavigationDelegate, WKUIDelegate>
 
 @property (nonatomic) BOOL postLastRead;
 @property (nonatomic) NYPLBook *book;
@@ -38,6 +37,7 @@
 @property (nonatomic) BOOL isPageTurning, canGoLeft, canGoRight;
 @property (nonatomic) RDPackageResourceServer *server;
 @property (nonatomic) NSArray *TOCElements;
+@property (nonatomic) NSArray *bookmarkElements;
 @property (nonatomic) WKWebView *webView;
 
 @property (nonatomic) NSDictionary *bookMapDictionary;
@@ -54,6 +54,8 @@
 @property (nonatomic) double secondsSinceComplete;
 
 @end
+
+static NSString *const localhost = @"127.0.0.1";
 
 static NSString *const renderer = @"readium";
 
@@ -156,6 +158,7 @@ static void removeCalloutBarFromSuperviewStartingFromView(UIView *const view)
   self.webView.autoresizingMask = (UIViewAutoresizingFlexibleHeight |
                                    UIViewAutoresizingFlexibleWidth);
   self.webView.navigationDelegate = self;
+  self.webView.UIDelegate = self;
   self.webView.scrollView.bounces = NO;
   self.webView.alpha = 0.0;
   [self addSubview:self.webView];
@@ -165,7 +168,8 @@ static void removeCalloutBarFromSuperviewStartingFromView(UIView *const view)
    [NSURLRequest requestWithURL:
     [NSURL URLWithString:
      [NSString stringWithFormat:
-      @"http://127.0.0.1:%d/simplified-readium/reader.html",
+      @"http://%@:%d/simplified-readium/reader.html",
+      localhost,
       self.server.port]]]];
   
   // Disable text selection.
@@ -400,6 +404,28 @@ executeJavaScript:(NSString *const)javaScript
 
 #pragma mark WKNavigationDelegate
 
+- (WKWebView *)webView:(__unused WKWebView *)webView
+createWebViewWithConfiguration:(__unused WKWebViewConfiguration *)configuration
+   forNavigationAction:(WKNavigationAction *)navigationAction
+        windowFeatures:(__unused WKWindowFeatures *)windowFeatures
+{
+  if([navigationAction.request.URL.host isEqualToString:localhost]) {
+    // We don't want to ever open such things in an external browser so we cancel the
+    // request. It's not clear why we'd end up here but doing nothing is better than
+    // switching to Safari and failing. (Keep in mind that this delegate method is only
+    // called when we MUST either create a new web view or cancel the request: Opening
+    // the request in the existing web view is not an option.)
+    return nil;
+  }
+  
+  // Since this is very likely a link to a web page, a mailto: URL, or similar, let
+  // Safari handle it.
+  [[UIApplication sharedApplication] openURL:navigationAction.request.URL];
+  
+  // Cancel the request.
+  return nil;
+}
+
 - (void)webView:(__unused WKWebView *)webView
 decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction
 decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
@@ -473,7 +499,7 @@ decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
     });
   }
   
-  self.package.rootURL = [NSString stringWithFormat:@"http://127.0.0.1:%d/", self.server.port];
+  self.package.rootURL = [NSString stringWithFormat:@"http://%@:%d/", localhost, self.server.port];
   
   dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0),^{
     [self calculateBookLength];
@@ -638,56 +664,83 @@ decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
   }];
 }
 
-- (void) hasBookmarkForSpineItem:(NSString*)idref
+- (void) hasBookmarkForSpineItem:(NSString*)idref completionHandler:(void(^)(bool success, NYPLReaderBookmarkElement *bookmark))completionHandler
 {
-  
-  //  filter the bookmarks first by spine item (idref) and then run the result through a loop until there is a match
-  // break out the loop if a match was found 
-  
-  
-//  for (bookmark in filteredBookmarks) {
-  
 
-  // dummy cfi , replace by cfi from the bookmark in this loop 
-  NSString *contentCFI = @"/4/2/2";
+  NSArray * bookmarks = [[NYPLBookRegistry sharedRegistry] bookmarksForIdentifier:self.book.identifier];
   
-  NSString *js = [NSString stringWithFormat:@"ReadiumSDK.reader.isVisibleSpineItemElementCfi('%@', '%@')",
-                  idref,
-                  contentCFI];
-  
-  NYPLLOG(js);
-  
-  [self
-   sequentiallyEvaluateJavaScript:js
-   withCompletionHandler:^(id  _Nullable result, NSError * _Nullable error) {
+  for (NYPLReaderBookmarkElement *bookmark in bookmarks) {
+
+    if (bookmark.idref == idref) {
+      NSString *js = [NSString stringWithFormat:@"ReadiumSDK.reader.isVisibleSpineItemElementCfi('%@', '%@')",
+                      bookmark.idref,
+                      bookmark.contentCFI];
+    
+      [self
+        sequentiallyEvaluateJavaScript:js
+        withCompletionHandler:^(id  _Nullable result, NSError * _Nullable error) {
      
-     if (!error)
-     {
-       NSNumber const *isBookmarked = result;
-       NYPLLOG(isBookmarked);
-       if (isBookmarked && ![isBookmarked  isEqual: @0])
-       {
-         // is not a bookmarked page
-         NYPLLOG(@"there is a bookmark for this page");
-       }
-       else
-       {
-         // is not a bookmarked page
-         
-         NYPLLOG(@"there is no bookmark for this page");
-       }
-       
-     }
-     else{
-       NYPLLOG(error);
-     }
-     
-   }];
+        if (!error) {
+          NSNumber const *isBookmarked = result;
+          NYPLLOG(isBookmarked);
+          if (isBookmarked && ![isBookmarked  isEqual: @0])
+          {
+            // a bookmark was found
+            completionHandler(YES, bookmark);
+          }
+        }
+        else {
+          NYPLLOG(error);
+        }
+      }];
+    }
+    
+    // a bookmark was not found
+    completionHandler(NO, nil);
+    
+  }
+}
+
+- (void)addBookmark
+{
+  NYPLBookRegistry *registry = [NYPLBookRegistry sharedRegistry];
+    
+  NYPLBookLocation *location = [registry locationForIdentifier:self.book.identifier];
+  NSDictionary *const locationDictionary = NYPLJSONObjectFromData([location.locationString dataUsingEncoding:NSUTF8StringEncoding]);
+	  
+  NSString *contentCFI = locationDictionary[@"contentCFI"];
+  NSString *idref = locationDictionary[@"idref"];
+  NSDictionary *spineItemDetails = self.bookMapDictionary[idref];
+  NSString *chapter = spineItemDetails[@"tocElementTitle"];
   
-  // end loop
-//  }
+  // annotation id and page need to be implemented
+  // annotation id only when SimplyE sync is enabled
+  // page needs to be determined where that info comes from.
+  NYPLReaderBookmarkElement *bookmark = [[NYPLReaderBookmarkElement alloc] initWithAnnotationId:@"" contentCFI:contentCFI idref:idref chapter:chapter page:@""];
   
+  // add the bookmark to the local registry
+  [registry addBookmark:bookmark forIdentifier:self.book.identifier];
   
+  // set the new bookmarks in this class
+  self.bookmarkElements = [registry bookmarksForIdentifier:self.book.identifier];
+  
+  // change bookmark icon to ON
+  __weak NYPLReaderReadiumView *const weakSelf = self;
+  [weakSelf.delegate renderer:weakSelf bookmark:bookmark icon:YES];
+}
+
+- (void) deleteBookmark:(NYPLReaderBookmarkElement*)bookmark
+{
+  // delete the bookmark from the local registry
+  NYPLBookRegistry *registry = [NYPLBookRegistry sharedRegistry];
+  [registry deleteBookmark:bookmark forIdentifier:self.book.identifier];
+  
+  // set the new bookmarks in this class
+  self.bookmarkElements = [registry bookmarksForIdentifier:self.book.identifier];
+  
+  // set the bookmark icon to no bookmark
+  __weak NYPLReaderReadiumView *const weakSelf = self;
+  [weakSelf.delegate renderer:weakSelf bookmark:nil icon:NO];
 }
 
 - (void)readiumPaginationChangedWithDictionary:(NSDictionary *const)dictionary
@@ -729,15 +782,18 @@ decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
        if (openPages.count>0 && [locationJSON rangeOfString:openPages[0][@"idref"]].location != NSNotFound) {
          completed = YES;
        }
+       
        NYPLLOG(locationJSON);
        
-//       NSError *jsonError;
-//       NSData *objectData = [locationJSON dataUsingEncoding:NSUTF8StringEncoding];
-//       NSDictionary *json = [NSJSONSerialization JSONObjectWithData:objectData
-//                                                            options:NSJSONReadingMutableContainers
-//                                                              error:&jsonError];
+       NSError *jsonError;
+       NSData *objectData = [locationJSON dataUsingEncoding:NSUTF8StringEncoding];
+       NSDictionary *json = [NSJSONSerialization JSONObjectWithData:objectData
+                                                            options:NSJSONReadingMutableContainers
+                                                              error:&jsonError];
 
-//       [self hasBookmarkForSpineItem:json[@"idref"]];
+       [self hasBookmarkForSpineItem:json[@"idref"] completionHandler:^(bool success,NYPLReaderBookmarkElement *bookmark) {
+         [weakSelf.delegate renderer:weakSelf bookmark:bookmark icon:success];
+       }];
        
        NYPLBookLocation *const location = [[NYPLBookLocation alloc]
                                            initWithLocationString:locationJSON
@@ -918,6 +974,19 @@ decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
   return _TOCElements;
 }
 
+#pragma mark NYPLReaderRenderer
+
+- (NSArray *)bookmarkElements
+{
+  if(_bookmarkElements) return _bookmarkElements;
+  
+  // otherwise, grab the bookmarks from the registry
+  _bookmarkElements = [[NYPLBookRegistry sharedRegistry]
+                       bookmarksForIdentifier:self.book.identifier];
+  
+  return _bookmarkElements;
+}
+
 - (void)openOpaqueLocation:(NYPLReaderRendererOpaqueLocation *const)opaqueLocation
 {
   if(![(id)opaqueLocation isKindOfClass:[RDNavigationElement class]]) {
@@ -930,6 +999,22 @@ decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
    [NSString stringWithFormat:@"ReadiumSDK.reader.openContentUrl('%@', '%@')",
     navigationElement.content,
     navigationElement.sourceHref]];
+}
+
+- (void)gotoBookmark:(NYPLReaderBookmarkElement *)bookmark
+{
+  NSMutableDictionary *const dictionary = [NSMutableDictionary dictionary];
+  
+  dictionary[@"package"] = self.package.dictionary;
+  dictionary[@"settings"] = [[NYPLReaderSettings sharedSettings] readiumSettingsRepresentation];
+  
+  dictionary[@"openPageRequest"] = @{@"idref": bookmark.idref, @"elementCfi": bookmark.contentCFI};
+  
+  NSData *data = NYPLJSONDataFromObject(dictionary);
+    
+  [self sequentiallyEvaluateJavaScript:
+   [NSString stringWithFormat:@"ReadiumSDK.reader.openBook(%@)",
+    [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]]];
 }
 
 - (BOOL) bookHasMediaOverlays {
