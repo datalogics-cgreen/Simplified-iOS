@@ -172,6 +172,7 @@
 		AE77EE7AACC975280BAB9A4C /* NYPLOPDSFeed.m in Sources */ = {isa = PBXBuildFile; fileRef = AE77E94D56B65997B861C0C0 /* NYPLOPDSFeed.m */; };
 		B594C7561BB06F40000028F5 /* HelpStackTheme.plist in Resources */ = {isa = PBXBuildFile; fileRef = B594C7551BB06F40000028F5 /* HelpStackTheme.plist */; };
 		B5ED41DA1B8F6E2E009FC164 /* NYPLBookButtonsView.m in Sources */ = {isa = PBXBuildFile; fileRef = B5ED41D91B8F6E2E009FC164 /* NYPLBookButtonsView.m */; };
+		D7E0A21D1F083E3800B81562 /* NYPLAccountAuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7E0A21C1F083E3800B81562 /* NYPLAccountAuthManager.swift */; };
 		E15AF04E809009612AA10D16 /* libPods-SimplyETests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BEEC686A5C71AFACFAC2A884 /* libPods-SimplyETests.a */; };
 		E6202A021DD4E6F300C99553 /* NYPLSettingsAccountDetailViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E6202A011DD4E6F300C99553 /* NYPLSettingsAccountDetailViewController.m */; };
 		E6202A041DD52B8600C99553 /* NYPLWelcomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6202A031DD52B8600C99553 /* NYPLWelcomeScreen.swift */; };
@@ -535,6 +536,7 @@
 		B5ED41D91B8F6E2E009FC164 /* NYPLBookButtonsView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = NYPLBookButtonsView.m; sourceTree = "<group>"; };
 		BEEC686A5C71AFACFAC2A884 /* libPods-SimplyETests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-SimplyETests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		CAE35BBA1B86289500BF9BC5 /* Simplified.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Simplified.xcconfig; sourceTree = "<group>"; };
+		D7E0A21C1F083E3800B81562 /* NYPLAccountAuthManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NYPLAccountAuthManager.swift; sourceTree = "<group>"; };
 		DE9D07935ED4E0F0BB8AD7B7 /* Pods-SimplyE.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SimplyE.release.xcconfig"; path = "Pods/Target Support Files/Pods-SimplyE/Pods-SimplyE.release.xcconfig"; sourceTree = "<group>"; };
 		E6202A001DD4E6F300C99553 /* NYPLSettingsAccountDetailViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NYPLSettingsAccountDetailViewController.h; sourceTree = "<group>"; };
 		E6202A011DD4E6F300C99553 /* NYPLSettingsAccountDetailViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = NYPLSettingsAccountDetailViewController.m; sourceTree = "<group>"; };
@@ -822,6 +824,7 @@
 				03F94CD01DD6288C00CE8F4F /* Accounts.swift */,
 				2D62568A1D412BCB0080A81F /* BundledHTMLViewController.swift */,
 				E6BA02B71DE4B6F600F76404 /* RemoteHTMLViewController.swift */,
+				D7E0A21C1F083E3800B81562 /* NYPLAccountAuthManager.swift */,
 				1164A9F51A797238002BD3AE /* NYPLSettings.h */,
 				1164A9F61A797238002BD3AE /* NYPLSettings.m */,
 				E6202A001DD4E6F300C99553 /* NYPLSettingsAccountDetailViewController.h */,
@@ -1526,6 +1529,7 @@
 				1195040B1994075B009FB788 /* NYPLReaderViewController.m in Sources */,
 				1183F33B194B775900DC322F /* NYPLCatalogLaneCell.m in Sources */,
 				E6202A021DD4E6F300C99553 /* NYPLSettingsAccountDetailViewController.m in Sources */,
+				D7E0A21D1F083E3800B81562 /* NYPLAccountAuthManager.swift in Sources */,
 				113137E71A48DAB90082954E /* NYPLReaderReadiumView.m in Sources */,
 				08A352731BDFF5380040BF1D /* NYPLAlertController.m in Sources */,
 				118B7ABF195CBF72005CE3E7 /* NYPLSession.m in Sources */,
